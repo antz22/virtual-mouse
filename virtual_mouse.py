@@ -3,6 +3,23 @@ import mediapipe as mp
 import time
 import pyautogui
 
+def dist(p1, p2):
+    return pow(pow(p2.x - p1.x, 2) + pow(p2.y - p1.y, 2), 0.5)
+
+WRIST = 0
+THUMB_TIP = 4
+INDEX_FINGER_PIP = 6
+INDEX_FINGER_TIP = 8
+MIDDLE_FINGER_MCP = 9
+MIDDLE_FINGER_PIP = 10
+MIDDLE_FINGER_TIP = 12
+RING_FINGER_MCP = 13
+RING_FINGER_PIP = 14
+RING_FINGER_TIP = 16
+PINKY_MCP = 17
+PINKY_PIP = 18
+PINKY_TIP = 20
+
 capture = cv2.VideoCapture(0)
 
 mp_hands = mp.solutions.hands
@@ -12,6 +29,9 @@ mp_draw = mp.solutions.drawing_utils
 
 previousTime = 0
 currentTime = 0
+
+frame_clicks = 0
+mouse_down = False
 
 size_x, size_y = pyautogui.size()
 
@@ -29,9 +49,38 @@ while capture.isOpened():
         for hand_landmarks in results.multi_hand_landmarks:
             mp_draw.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
-        index_point = 8
-        position = [results.multi_hand_landmarks[0].landmark[index_point].x ,results.multi_hand_landmarks[0].landmark[index_point].y]
+        num_hands = len(results.multi_hand_landmarks)
+        right_landmarks = results.multi_hand_landmarks[num_hands - 1].landmark
+
+        position = [right_landmarks[INDEX_FINGER_TIP].x, right_landmarks[INDEX_FINGER_TIP].y]
         pyautogui.moveTo(position[0]*(1.4)*size_x-0.2*size_x, position[1]*(1.4)*size_y-0.2*size_y)
+
+        if num_hands > 1:
+            left_landmarks = results.multi_hand_landmarks[0].landmark
+            if dist(left_landmarks[THUMB_TIP], left_landmarks[INDEX_FINGER_TIP]) < 0.035:
+                pyautogui.rightClick()
+
+        if dist(right_landmarks[MIDDLE_FINGER_TIP], right_landmarks[THUMB_TIP]) < 0.03:
+            frame_clicks += 1
+            print(dist(right_landmarks[MIDDLE_FINGER_TIP], right_landmarks[THUMB_TIP]))
+
+            if frame_clicks > 2:
+                if not mouse_down:
+                    mouse_down = True
+                    pyautogui.mouseDown()
+                else:
+                    mouse_down = False
+                    frame_clicks = 0
+                    pyautogui.mouseUp()
+            elif mouse_down:
+                mouse_down = False
+                frame_clicks = 0
+                pyautogui.mouseUp()
+            else:
+                pyautogui.click()
+
+        else:
+            frame_clicks = 0
 
     currentTime = time.time()
     fps = 1 / (currentTime - previousTime)
@@ -46,3 +95,4 @@ while capture.isOpened():
 
 capture.release()
 cv2.destroyAllWindows()
+
