@@ -1,131 +1,124 @@
+from utils import dist
+from hand_coord import HandCoord
+import pyautogui
 import cv2
 import mediapipe as mp
 import time
-import pyautogui
 
-def dist(p1, p2):
-    return pow(pow(p2.x - p1.x, 2) + pow(p2.y - p1.y, 2), 0.5)
 
-WRIST = 0
-THUMB_TIP = 4
-INDEX_FINGER_PIP = 6
-INDEX_FINGER_TIP = 8
-MIDDLE_FINGER_MCP = 9
-MIDDLE_FINGER_PIP = 10
-MIDDLE_FINGER_TIP = 12
-RING_FINGER_MCP = 13
-RING_FINGER_PIP = 14
-RING_FINGER_TIP = 16
-PINKY_MCP = 17
-PINKY_PIP = 18
-PINKY_TIP = 20
 
-capture = cv2.VideoCapture(0)
-capture.set(3, 640)
-capture.set(4, 480)
+class VirtualMouse:
+    def __init__(self):
+        self.frame_clicks = 0
+        self.frame_pinches = 0
+        self.pinch_up = False
+        self.pinch_down = False
+        self.mouse_down = False
+        self.prev_landmarks = []
 
-mp_hands = mp.solutions.hands
-hands = mp_hands.Hands(min_detection_confidence=0.5,
-                      min_tracking_confidence=0.5)
-mp_draw = mp.solutions.drawing_utils
+        self.size_x, self.size_y = pyautogui.size()
 
-previousTime = 0
-currentTime = 0
+        self.capture = cv2.VideoCapture(0)
+        self.capture.set(3, 2000)
+        self.capture.set(4, 1600)
 
-frame_clicks = 0
-frame_pinches = 0
-pinch_up = False
-pinch_down = False
-mouse_down = False
-prev_landmarks = []
+        pyautogui.FAILSAFE = False
 
-size_x, size_y = pyautogui.size()
+        self.mp_hands = mp.solutions.hands
+        self.mp_draw = mp.solutions.drawing_utils
+        self.hands = self.mp_hands.Hands(min_detection_confidence=0.5,
+                                         min_tracking_confidence=0.5)
 
-while capture.isOpened():
-    ret, frame = capture.read()
-    frame = cv2.resize(frame, (2000, 1600))
-    image = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
+        self.hand_coord = HandCoord()
 
-    image.flags.writeable = False
-    results = hands.process(image)
-    image.flags.writeable = True
+    def start(self):
+        while self.capture.isOpened():
 
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-    if results.multi_hand_landmarks:
-        for hand_landmarks in results.multi_hand_landmarks:
-            mp_draw.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+            ret, frame = self.capture.read()
+            frame = cv2.resize(frame, (2000, 1600))
+            image = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
 
-        num_hands = len(results.multi_hand_landmarks)
-        right_landmarks = results.multi_hand_landmarks[num_hands - 1].landmark
+            image.flags.writeable = False
+            results = self.hands.process(image)
+            image.flags.writeable = True
 
-        position = [right_landmarks[INDEX_FINGER_TIP].x, right_landmarks[INDEX_FINGER_TIP].y]
-        pyautogui.moveTo(position[0]*(1.5)*size_x-0.25*size_x, position[1]*(1.6)*size_y-0.25*size_y)
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            if results.multi_hand_landmarks:
+                for hand_landmarks in results.multi_hand_landmarks:
+                    self.mp_draw.draw_landmarks(image, hand_landmarks, self.mp_hands.HAND_CONNECTIONS)
 
-        if num_hands > 1:
-            left_landmarks = results.multi_hand_landmarks[0].landmark
-            # if dist(left_landmarks[THUMB_TIP], left_landmarks[INDEX_FINGER_TIP]) < 0.035:
-            #     pyautogui.rightClick()
+                num_hands = len(results.multi_hand_landmarks)
+                right_landmarks = results.multi_hand_landmarks[num_hands - 1].landmark
 
-            if dist(left_landmarks[INDEX_FINGER_TIP], left_landmarks[THUMB_TIP]) < 0.04:
-                if frame_pinches >= 5:
-                    if pinch_up:
-                        pyautogui.scroll(120)
-                    elif pinch_down:
-                        pyautogui.scroll(-120)
-                        
-                elif frame_pinches < 2:
+                position = [right_landmarks[self.hand_coord.INDEX_FINGER_TIP].x, right_landmarks[self.hand_coord.INDEX_FINGER_TIP].y]
+                pyautogui.moveTo(position[0]*(1.5)*self.size_x-0.25*self.size_x, position[1]*(1.6)*self.size_y-0.25*self.size_y)
 
-                    if prev_landmarks[0].landmark[THUMB_TIP].y < left_landmarks[THUMB_TIP].y:
-                        pinch_down = True
-                        pinch_up = False
+                if num_hands > 1:
+                    left_landmarks = results.multi_hand_landmarks[0].landmark
+                    # if dist(left_landmarks[THUMB_TIP], left_landmarks[INDEX_FINGER_TIP]) < 0.035:
+                    #     pyautogui.rightClick()
+
+                    if dist(left_landmarks[self.hand_coord.INDEX_FINGER_TIP], left_landmarks[self.hand_coord.THUMB_TIP]) < 0.04:
+                        if frame_pinches >= 5:
+                            if pinch_up:
+                                pyautogui.scroll(120)
+                            elif pinch_down:
+                                pyautogui.scroll(-120)
+                                
+                        elif frame_pinches < 2:
+
+                            if prev_landmarks[0].landmark[self.hand_coord.THUMB_TIP].y < left_landmarks[self.hand_coord.THUMB_TIP].y:
+                                pinch_down = True
+                                pinch_up = False
+                            else:
+                                pinch_up = True
+                                pinch_down = False
+
+                        frame_pinches += 1
+
                     else:
-                        pinch_up = True
+                        frame_pinches = 0
+                        pinch_up = False
                         pinch_down = False
 
-                frame_pinches += 1
 
-            else:
-                frame_pinches = 0
-                pinch_up = False
-                pinch_down = False
+                if dist(right_landmarks[self.hand_coord.MIDDLE_FINGER_TIP], right_landmarks[self.hand_coord.THUMB_TIP]) < 0.03 and right_landmarks[self.hand_coord.MIDDLE_FINGER_TIP].y < right_landmarks[self.hand_coord.THUMB_TIP].y:
+                    frame_clicks += 1
+                    print(dist(right_landmarks[self.hand_coord.MIDDLE_FINGER_TIP], right_landmarks[self.hand_coord.THUMB_TIP]))
 
+                    # if frame_clicks > 2:
+                    #     if not mouse_down:
+                    #         mouse_down = True
+                    #         pyautogui.mouseDown()
+                    #     else:
+                    #         mouse_down = False
+                    #         frame_clicks = 0
+                    #         pyautogui.mouseUp()
+                    # elif mouse_down:
+                    #     mouse_down = False
+                    #     frame_clicks = 0
+                    #     pyautogui.mouseUp()
+                    # else:
+                    if frame_clicks == 1:
+                        pyautogui.click()
 
-        if dist(right_landmarks[MIDDLE_FINGER_TIP], right_landmarks[THUMB_TIP]) < 0.03 and right_landmarks[MIDDLE_FINGER_TIP].y < right_landmarks[THUMB_TIP].y:
-            frame_clicks += 1
-            print(dist(right_landmarks[MIDDLE_FINGER_TIP], right_landmarks[THUMB_TIP]))
+                else:
+                    frame_clicks = 0
 
-            # if frame_clicks > 2:
-            #     if not mouse_down:
-            #         mouse_down = True
-            #         pyautogui.mouseDown()
-            #     else:
-            #         mouse_down = False
-            #         frame_clicks = 0
-            #         pyautogui.mouseUp()
-            # elif mouse_down:
-            #     mouse_down = False
-            #     frame_clicks = 0
-            #     pyautogui.mouseUp()
-            # else:
-            if frame_clicks == 1:
-                pyautogui.click()
+                prev_landmarks = results.multi_hand_landmarks
 
-        else:
-            frame_clicks = 0
+            currentTime = time.time()
+            fps = 1 / (currentTime - previousTime)
+            previousTime = currentTime
 
-        prev_landmarks = results.multi_hand_landmarks
+            cv2.putText(image, str(int(fps)), (10, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 0, 255), 3)
 
-    currentTime = time.time()
-    fps = 1 / (currentTime - previousTime)
-    previousTime = currentTime
+            cv2.imshow("Image", image)
 
-    cv2.putText(image, str(int(fps)), (10, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 0, 255), 3)
+            if cv2.waitKey(5) & 0xFF == ord('q'):
+                break
 
-    cv2.imshow("Image", image)
+        utils.capture.release()
+        cv2.destroyAllWindows()
 
-    if cv2.waitKey(5) & 0xFF == ord('q'):
-        break
-
-capture.release()
-cv2.destroyAllWindows()
 
