@@ -29,8 +29,6 @@ class VirtualMouse:
         self.hands = self.mp_hands.Hands(min_detection_confidence=0.5,
                                          min_tracking_confidence=0.5)
 
-        self.hand_coord = HandCoord()
-
     def start(self):
         while self.capture.isOpened():
 
@@ -50,7 +48,7 @@ class VirtualMouse:
                 num_hands = len(results.multi_hand_landmarks)
                 right_landmarks = results.multi_hand_landmarks[num_hands - 1].landmark
 
-                position = [right_landmarks[self.hand_coord.INDEX_FINGER_TIP].x, right_landmarks[self.hand_coord.INDEX_FINGER_TIP].y]
+                position = [right_landmarks[HandCoord.INDEX_FINGER_TIP].x, right_landmarks[HandCoord.INDEX_FINGER_TIP].y]
                 pyautogui.moveTo(position[0]*(1.5)*self.size_x-0.25*self.size_x, position[1]*(1.6)*self.size_y-0.25*self.size_y)
 
                 if num_hands > 1:
@@ -58,7 +56,7 @@ class VirtualMouse:
                     # if dist(left_landmarks[THUMB_TIP], left_landmarks[INDEX_FINGER_TIP]) < 0.035:
                     #     pyautogui.rightClick()
 
-                    if dist(left_landmarks[self.hand_coord.INDEX_FINGER_TIP], left_landmarks[self.hand_coord.THUMB_TIP]) < 0.04:
+                    if dist(left_landmarks[HandCoord.INDEX_FINGER_TIP], left_landmarks[HandCoord.THUMB_TIP]) < 0.04:
                         if frame_pinches >= 5:
                             if pinch_up:
                                 pyautogui.scroll(120)
@@ -67,7 +65,7 @@ class VirtualMouse:
                                 
                         elif frame_pinches < 2:
 
-                            if prev_landmarks[0].landmark[self.hand_coord.THUMB_TIP].y < left_landmarks[self.hand_coord.THUMB_TIP].y:
+                            if prev_landmarks[0].landmark[HandCoord.THUMB_TIP].y < left_landmarks[HandCoord.THUMB_TIP].y:
                                 pinch_down = True
                                 pinch_up = False
                             else:
@@ -82,9 +80,9 @@ class VirtualMouse:
                         pinch_down = False
 
 
-                if dist(right_landmarks[self.hand_coord.MIDDLE_FINGER_TIP], right_landmarks[self.hand_coord.THUMB_TIP]) < 0.03 and right_landmarks[self.hand_coord.MIDDLE_FINGER_TIP].y < right_landmarks[self.hand_coord.THUMB_TIP].y:
+                if dist(right_landmarks[HandCoord.MIDDLE_FINGER_TIP], right_landmarks[HandCoord.THUMB_TIP]) < 0.03 and right_landmarks[HandCoord.MIDDLE_FINGER_TIP].y < right_landmarks[HandCoord.THUMB_TIP].y:
                     frame_clicks += 1
-                    print(dist(right_landmarks[self.hand_coord.MIDDLE_FINGER_TIP], right_landmarks[self.hand_coord.THUMB_TIP]))
+                    print(dist(right_landmarks[HandCoord.MIDDLE_FINGER_TIP], right_landmarks[HandCoord.THUMB_TIP]))
 
                     # if frame_clicks > 2:
                     #     if not mouse_down:
@@ -118,7 +116,7 @@ class VirtualMouse:
             if cv2.waitKey(5) & 0xFF == ord('q'):
                 break
 
-        utils.capture.release()
+        self.capture.release()
         cv2.destroyAllWindows()
 
 
