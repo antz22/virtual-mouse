@@ -30,6 +30,9 @@ class VirtualMouse:
                                          min_tracking_confidence=0.5)
 
     def start(self):
+        previousTime = 0
+        currentTime = 0
+
         while self.capture.isOpened():
 
             ret, frame = self.capture.read()
