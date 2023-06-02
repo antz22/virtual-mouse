@@ -19,7 +19,7 @@ class VirtualMouse:
         self.size_x, self.size_y = pyautogui.size()
 
         self.capture = cv2.VideoCapture(0)
-        self.capture.set(3, 2000)
+        self.capture.set(3, 3000)
         self.capture.set(4, 1600)
 
         pyautogui.FAILSAFE = False
@@ -30,88 +30,120 @@ class VirtualMouse:
                                          min_tracking_confidence=0.5)
 
     def start(self):
+        # configure frame from video feed
+        ret, frame = self.capture.read()
+        # frame = cv2.resize(frame, (2000, 1600))
+        image = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
+
+        # process mapping of hands from frame
+        image.flags.writeable = False
+        results = self.hands.process(image)
+        image.flags.writeable = True
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        return image, results
+
+
+    def track_cursor(self, right_landmarks):
+        # find x and y coords of tip of index finger
+        position = [right_landmarks[HandCoord.INDEX_FINGER_TIP].x, right_landmarks[HandCoord.INDEX_FINGER_TIP].y]
+
+        # move cursor to the x and y coords - extra range of motion added to increase sensitivity
+        pyautogui.moveTo(position[0]*(1.5)*self.size_x-0.25*self.size_x, position[1]*(1.6)*self.size_y-0.25*self.size_y)
+
+    def track_left_click(self, right_landmarks):
+
+        # if the right hand's middle finger and thumb are 
+        # touching and the middle finger is above the thumb
+        if dist(right_landmarks[HandCoord.MIDDLE_FINGER_TIP], right_landmarks[HandCoord.THUMB_TIP]) < 0.03 and right_landmarks[HandCoord.MIDDLE_FINGER_TIP].y < right_landmarks[HandCoord.THUMB_TIP].y:
+
+            self.frame_clicks += 1
+            print(dist(right_landmarks[HandCoord.MIDDLE_FINGER_TIP], right_landmarks[HandCoord.THUMB_TIP]))
+
+            if self.frame_clicks == 1:
+                pyautogui.click()
+
+            # if frame_clicks > 2:
+            #     if not mouse_down:
+            #         mouse_down = True
+            #         pyautogui.mouseDown()
+            #     else:
+            #         mouse_down = False
+            #         frame_clicks = 0
+            #         pyautogui.mouseUp()
+            # elif mouse_down:
+            #     mouse_down = False
+            #     frame_clicks = 0
+            #     pyautogui.mouseUp()
+            # else:
+
+        else:
+            self.frame_clicks = 0
+
+    def track_scrolling(self, left_landmarks):
+
+        # left index finger and thumb are pinched together
+        if dist(left_landmarks[HandCoord.INDEX_FINGER_TIP], left_landmarks[HandCoord.THUMB_TIP]) < 0.04:
+
+            # if pinch has been held for more than 5 frames
+            if self.frame_pinches >= 5:
+                if self.pinch_up:
+                    pyautogui.scroll(120)
+                elif self.pinch_down:
+                    pyautogui.scroll(-120)
+                    
+            elif self.frame_pinches < 2:
+
+                # discover if the pinch is moved up or down
+                if self.prev_landmarks[0].landmark[HandCoord.THUMB_TIP].y < left_landmarks[HandCoord.THUMB_TIP].y:
+                    self.pinch_down = True
+                    self.pinch_up = False
+                else:
+                    self.pinch_up = True
+                    self.pinch_down = False
+
+            self.frame_pinches += 1
+
+        else:
+            self.frame_pinches = 0
+            self.pinch_up = False
+            self.pinch_down = False
+
+    def run(self):
         previousTime = 0
         currentTime = 0
 
         while self.capture.isOpened():
 
-            ret, frame = self.capture.read()
-            frame = cv2.resize(frame, (2000, 1600))
-            image = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
+            # process image and hand mappings from video frame
+            image, results = self.start()
 
-            image.flags.writeable = False
-            results = self.hands.process(image)
-            image.flags.writeable = True
-
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
             if results.multi_hand_landmarks:
+                # draw detected hands
                 for hand_landmarks in results.multi_hand_landmarks:
                     self.mp_draw.draw_landmarks(image, hand_landmarks, self.mp_hands.HAND_CONNECTIONS)
 
                 num_hands = len(results.multi_hand_landmarks)
                 right_landmarks = results.multi_hand_landmarks[num_hands - 1].landmark
 
-                position = [right_landmarks[HandCoord.INDEX_FINGER_TIP].x, right_landmarks[HandCoord.INDEX_FINGER_TIP].y]
-                pyautogui.moveTo(position[0]*(1.5)*self.size_x-0.25*self.size_x, position[1]*(1.6)*self.size_y-0.25*self.size_y)
+                # control position of mouse
+                self.track_cursor(right_landmarks)
 
+                # control left click
+                self.track_left_click(right_landmarks)
+
+                # if left hand exists
                 if num_hands > 1:
                     left_landmarks = results.multi_hand_landmarks[0].landmark
-                    # if dist(left_landmarks[THUMB_TIP], left_landmarks[INDEX_FINGER_TIP]) < 0.035:
-                    #     pyautogui.rightClick()
 
-                    if dist(left_landmarks[HandCoord.INDEX_FINGER_TIP], left_landmarks[HandCoord.THUMB_TIP]) < 0.04:
-                        if frame_pinches >= 5:
-                            if pinch_up:
-                                pyautogui.scroll(120)
-                            elif pinch_down:
-                                pyautogui.scroll(-120)
-                                
-                        elif frame_pinches < 2:
+                    # control scrolling through pinch
+                    self.track_scrolling(left_landmarks)
 
-                            if prev_landmarks[0].landmark[HandCoord.THUMB_TIP].y < left_landmarks[HandCoord.THUMB_TIP].y:
-                                pinch_down = True
-                                pinch_up = False
-                            else:
-                                pinch_up = True
-                                pinch_down = False
+                self.prev_landmarks = results.multi_hand_landmarks
 
-                        frame_pinches += 1
-
-                    else:
-                        frame_pinches = 0
-                        pinch_up = False
-                        pinch_down = False
-
-
-                if dist(right_landmarks[HandCoord.MIDDLE_FINGER_TIP], right_landmarks[HandCoord.THUMB_TIP]) < 0.03 and right_landmarks[HandCoord.MIDDLE_FINGER_TIP].y < right_landmarks[HandCoord.THUMB_TIP].y:
-                    frame_clicks += 1
-                    print(dist(right_landmarks[HandCoord.MIDDLE_FINGER_TIP], right_landmarks[HandCoord.THUMB_TIP]))
-
-                    # if frame_clicks > 2:
-                    #     if not mouse_down:
-                    #         mouse_down = True
-                    #         pyautogui.mouseDown()
-                    #     else:
-                    #         mouse_down = False
-                    #         frame_clicks = 0
-                    #         pyautogui.mouseUp()
-                    # elif mouse_down:
-                    #     mouse_down = False
-                    #     frame_clicks = 0
-                    #     pyautogui.mouseUp()
-                    # else:
-                    if frame_clicks == 1:
-                        pyautogui.click()
-
-                else:
-                    frame_clicks = 0
-
-                prev_landmarks = results.multi_hand_landmarks
-
+            # calculate and display fps
             currentTime = time.time()
             fps = 1 / (currentTime - previousTime)
             previousTime = currentTime
-
             cv2.putText(image, str(int(fps)), (10, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 0, 255), 3)
 
             cv2.imshow("Image", image)
