@@ -35,7 +35,6 @@ class VirtualMouse:
     def start(self):
         # configure frame from video feed
         ret, frame = self.capture.read()
-        # frame = cv2.resize(frame, (2000, 1600))
         image = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
 
         # process mapping of hands from frame
@@ -78,7 +77,6 @@ class VirtualMouse:
         if is_left_thumb_pressed and is_left_hand_closed:
 
             self.frame_clicks += 1
-            print(dist(left_landmarks[HandCoord.INDEX_FINGER_PIP], left_landmarks[HandCoord.THUMB_TIP]))
             print("LEFT AND RIGHT PINCH")
 
             if self.frame_clicks > 2 and not self.mouse_down:
