@@ -8,6 +8,9 @@ import time
 
 
 class VirtualMouse:
+    """
+    Python class to control user GUI based on user hand controls, processed by the opencv and mediapipe libraries
+    """
     def __init__(self):
         self.frame_clicks = 0
         self.frame_pinches = 0
@@ -55,60 +58,37 @@ class VirtualMouse:
         # if the right hand's middle finger and thumb are 
         # touching and the middle finger is above the thumb
         if dist(right_landmarks[HandCoord.MIDDLE_FINGER_TIP], right_landmarks[HandCoord.THUMB_TIP]) < 0.03 and right_landmarks[HandCoord.MIDDLE_FINGER_TIP].y < right_landmarks[HandCoord.THUMB_TIP].y:
-
-            self.frame_clicks += 1
-            print(dist(right_landmarks[HandCoord.MIDDLE_FINGER_TIP], right_landmarks[HandCoord.THUMB_TIP]))
-
-            if self.frame_clicks == 1:
-                pyautogui.click()
-
-
-        else:
-            self.frame_clicks = 0
-
+            print("LEFT CLICK")
+            pyautogui.click()
 
     def track_right_click(self, left_landmarks):
 
         # if the left and right hand's middle and thumb fingers are pinched
         if dist(left_landmarks[HandCoord.MIDDLE_FINGER_TIP], left_landmarks[HandCoord.THUMB_TIP]) < 0.03 and left_landmarks[HandCoord.MIDDLE_FINGER_TIP].y < left_landmarks[HandCoord.THUMB_TIP].y:
-            # self.frame_clicks += 1
-            print(dist(left_landmarks[HandCoord.MIDDLE_FINGER_TIP], left_landmarks[HandCoord.THUMB_TIP]))
-
-            # if self.frame_clicks == 1:
-            pyautogui.click()
-
-        # else:
-        #     self.frame_clicks = 0
+            print("RIGHT CLICK")
+            pyautogui.rightClick()
 
     def track_hold_click(self, left_landmarks, right_landmarks):
 
-        # if the left and right hands' middle finger and thumb are 
-        # touching and the middle finger is above the thumb
-        is_left_middle_thumb_pinched = dist(left_landmarks[HandCoord.MIDDLE_FINGER_TIP], left_landmarks[HandCoord.THUMB_TIP]) < 0.04
-        is_left_hand_closed = left_landmarks[HandCoord.MIDDLE_FINGER_TIP].y < left_landmarks[HandCoord.THUMB_TIP].y
-        is_right_middle_thumb_pinched = dist(right_landmarks[HandCoord.MIDDLE_FINGER_TIP], right_landmarks[HandCoord.THUMB_TIP]) < 0.04
-        is_right_hand_closed = right_landmarks[HandCoord.MIDDLE_FINGER_TIP].y < right_landmarks[HandCoord.THUMB_TIP].y
+        # if thumb is pressed against first joint of index finger
+        # and thumb is higher than the index finger
+        is_left_thumb_pressed = dist(left_landmarks[HandCoord.INDEX_FINGER_PIP], left_landmarks[HandCoord.THUMB_TIP]) < 0.026
+        is_left_hand_closed = left_landmarks[HandCoord.INDEX_FINGER_PIP].y > left_landmarks[HandCoord.THUMB_TIP].y
 
-        if is_left_middle_thumb_pinched and is_left_hand_closed and is_right_middle_thumb_pinched and is_right_hand_closed:
+        if is_left_thumb_pressed and is_left_hand_closed:
 
             self.frame_clicks += 1
-            print(dist(left_landmarks[HandCoord.MIDDLE_FINGER_TIP], left_landmarks[HandCoord.THUMB_TIP]))
+            print(dist(left_landmarks[HandCoord.INDEX_FINGER_PIP], left_landmarks[HandCoord.THUMB_TIP]))
+            print("LEFT AND RIGHT PINCH")
 
-            if self.frame_clicks == 1:
-                pyautogui.click()
+            if self.frame_clicks > 2 and not self.mouse_down:
+                self.mouse_down = True
+                pyautogui.mouseDown()
 
-            if frame_clicks > 2:
-                if not mouse_down:
-                    mouse_down = True
-                    pyautogui.mouseDown()
-                else:
-                    mouse_down = False
-                    frame_clicks = 0
-                    pyautogui.mouseUp()
-            elif mouse_down:
-                mouse_down = False
-                frame_clicks = 0
-                pyautogui.mouseUp()
+        elif self.mouse_down:
+            self.mouse_down = False
+            self.frame_clicks = 0
+            pyautogui.mouseUp()
 
         else:
             self.frame_clicks = 0
