@@ -5,6 +5,7 @@ VirtualMouse is a program that lets you control your computer / GUI using only h
 ## Controls
 
 | Control | Instruction |
+| ------- | ----------- |
 | Cursor | Move the right index finger to control the cursor. |
 | Left Click | Pinch the right hand's middle finger and thumb. |
 | Right Click | Pinch the left hand's middle finger and thumb. | 
