@@ -4,20 +4,12 @@ VirtualMouse is a program that lets you control your computer / GUI using only h
 
 ## Controls
 
-- Cursor
-Move the right index finger to control the cursor.
-
-- Left click
-Pinch right middle finger and thumb.
-
-- Right click
-Pinch left middle finger and thumb.
-
-- Hold click
-Press left thumb down, like pressing a button. Drag cursor to select content, then lift left thumb.
-
-- Scroll
-Pinch left index finger and thumb, and drag up / down to scroll up / down.
+| Control | Instruction |
+| Cursor | Move the right index finger to control the cursor. |
+| Left Click | Pinch the right hand's middle finger and thumb. |
+| Right Click | Pinch the left hand's middle finger and thumb. | 
+| Hold Click | Press the left hand's thumb down, like pressing a button. Drag the cursor to select content, then lift the left hand's thumb. |
+| Scroll | Pinch the left hand's index finger and thumb, and drag up / down to scroll up / down. |
 
 ## Tools
 
