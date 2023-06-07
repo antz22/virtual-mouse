@@ -67,17 +67,13 @@ class VirtualMouse:
             print("RIGHT CLICK")
             pyautogui.rightClick()
 
-    def track_hold_click(self, left_landmarks, right_landmarks):
+    def track_hold_click(self, left_landmarks):
 
-        # if thumb is pressed against first joint of index finger
-        # and thumb is higher than the index finger
-        is_left_thumb_pressed = dist(left_landmarks[HandCoord.INDEX_FINGER_PIP], left_landmarks[HandCoord.THUMB_TIP]) < 0.026
-        is_left_hand_closed = left_landmarks[HandCoord.INDEX_FINGER_PIP].y > left_landmarks[HandCoord.THUMB_TIP].y
-
-        if is_left_thumb_pressed and is_left_hand_closed:
+        # if left ring finger tip and thumb tip are pressed together
+        if dist(left_landmarks[HandCoord.RING_FINGER_TIP], left_landmarks[HandCoord.THUMB_TIP]) < 0.03:
 
             self.frame_clicks += 1
-            print("LEFT AND RIGHT PINCH")
+            print("HOLD CLICK")
 
             if self.frame_clicks > 2 and not self.mouse_down:
                 self.mouse_down = True
@@ -155,7 +151,7 @@ class VirtualMouse:
                     self.track_right_click(left_landmarks)
 
                     # control hold click through pinches
-                    self.track_hold_click(left_landmarks, right_landmarks)
+                    self.track_hold_click(left_landmarks)
 
                 self.prev_landmarks = results.multi_hand_landmarks
 
